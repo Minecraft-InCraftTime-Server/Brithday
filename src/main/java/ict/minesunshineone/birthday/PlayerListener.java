@@ -90,7 +90,12 @@ public class PlayerListener implements Listener {
                 int slot = event.getSlot();
                 int row = (slot - 10) / 9;
                 int col = (slot - 10) % 9;
-                int month = row * 6 + col + 1;
+                int month;
+                if (row == 0) {
+                    month = col + 1;
+                } else {
+                    month = (row * 6) + (col - 1) + 1; // 减1是因为第二行向右移动了一列
+                }
 
                 if (month >= 1 && month <= 12) {
                     birthdayGUI.openDayGUI((Player) event.getWhoClicked(), month);

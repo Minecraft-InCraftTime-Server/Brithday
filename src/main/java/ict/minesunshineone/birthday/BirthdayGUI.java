@@ -62,6 +62,9 @@ public class BirthdayGUI {
                 // 计算位置 (2x6 布局)
                 int row = (month - 1) / 6;
                 int col = (month - 1) % 6;
+                if (row == 1) { // 如果是第二行(7-12月)
+                    col += 1; // 向右移动一列
+                }
                 int slot = 10 + col + (row * 9);
                 gui.setItem(slot, monthItem);
             }

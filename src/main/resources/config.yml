@@ -33,29 +33,6 @@ firework:
 
 # GUI配置
 gui:
-  enabled: true
-  month-title: "请选择你的生日月份"
-  day-title: "请选择你的生日日期"
-  month-item: PAPER
-  day-item: PAPER
-
-# 系统设置
-settings:
-  check-interval: 72000 # ticks (1小时)
-  save-interval: 6000 # ticks (5分钟)
-  first-join-gui: true
-  reminder-days: 3 # 提前多少天提醒
-  
-# 生日提醒配置
-reminder:
-  enabled: true
-  advance-days: 3 # 提前多少天提醒
-  broadcast: false # 是否全服广播
-  message: "&e再过%days%天就是 %player% 的生日了！"
-  
-      
-# GUI自定义
-gui:
   month:
     title: "请选择生日月份"
     size: 27
@@ -72,7 +49,20 @@ gui:
     item:
       material: PAPER
       name: "&b%day%日"
-      
+
+# 系统设置
+settings:
+  check-interval: 72000 # ticks (1小时)
+  save-interval: 6000 # ticks (5分钟)
+  first-join-gui: true
+
+# 生日提醒配置
+reminder:
+  enabled: true
+  advance-days: 3 # 提前多少天提醒
+  broadcast: false # 是否全服广播
+  message: "&e再过%days%天就是 %player% 的生日了！"
+
 # 特效配置
 effects:
   duration: 100 # 持续5秒

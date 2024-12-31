@@ -220,6 +220,13 @@ public class PlayerListener implements Listener {
     }
 
     private void handleBirthdayWish(Player sender, String birthdayPlayerName, String todayString) {
+        // 首先检查今天是否真的有人过生日
+        if (birthdayPlayerName == null) {
+            sender.sendMessage(Component.text("今天没有人过生日哦！")
+                    .color(NamedTextColor.RED));
+            return;
+        }
+
         String uuid = sender.getUniqueId().toString();
         YamlConfiguration wishData = plugin.getPlayerDataManager().getPlayerData(uuid);
         String wishKey = "wishes." + todayString;
@@ -230,9 +237,8 @@ public class PlayerListener implements Listener {
                 ItemStack cake = new ItemStack(Material.CAKE, 1);
                 sender.getInventory().addItem(cake);
                 String message = plugin.getConfig().getString("messages.wish-success", "感谢你向 %player% 送上生日祝福！");
-                String playerName = birthdayPlayerName != null ? birthdayPlayerName : "未知玩家";
                 sender.sendMessage(Component.text(message != null ? message : "感谢你向 %player% 送上生日祝福！")
-                        .replaceText(builder -> builder.match("%player%").replacement(playerName))
+                        .replaceText(builder -> builder.match("%player%").replacement(birthdayPlayerName))
                         .color(NamedTextColor.GREEN));
             });
 

@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -66,6 +67,21 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title());
+        Player player = (Player) event.getWhoClicked();
+        String uuid = player.getUniqueId().toString();
+
+        // 检查玩家是否已经设置过生日且没有修改权限
+        if ((title.equals("请选择你的生日月份") || title.equals("请选择日期"))
+                && plugin.getPlayerDataManager().getBirthday(uuid) != null
+                && !player.hasPermission("birthday.modify")) {
+            event.setCancelled(true);
+            player.closeInventory();
+            player.sendMessage(Component.text("你已经设置过生日了！如需修改请联系管理员。")
+                    .color(NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            return;
+        }
+
         if (title.equals("请选择你的生日月份")) {
             event.setCancelled(true);
             ItemStack clickedItem = event.getCurrentItem();
@@ -84,7 +100,6 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
             ItemStack clickedItem = event.getCurrentItem();
             if (clickedItem != null && clickedItem.getType() == Material.PAPER) {
-                Player player = (Player) event.getWhoClicked();
                 // 计算实际日期
                 int slot = event.getSlot();
                 int row = (slot - 10) / 9;
@@ -107,6 +122,23 @@ public class PlayerListener implements Listener {
             plugin.getServer().getRegionScheduler().execute(plugin, event.getPlayer().getLocation(), () -> {
                 checkBirthdayWish(event.getPlayer());
             });
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title());
+        if ((title.equals("请选择你的生日月份") || title.equals("请选择日期"))
+                && plugin.getPlayerDataManager().getBirthday(event.getPlayer().getUniqueId().toString()) == null) {
+
+            Player player = (Player) event.getPlayer();
+            // 延迟发送消息，确保在GUI完全关闭后
+            plugin.getServer().getRegionScheduler().runDelayed(plugin, player.getLocation(), task -> {
+                player.sendMessage(Component.text("你还没有设置生日信息！")
+                        .color(NamedTextColor.YELLOW));
+                player.sendMessage(Component.text("可以使用 /birthday set 命令重新打开设置界面")
+                        .color(NamedTextColor.YELLOW));
+            }, 1L);
         }
     }
 

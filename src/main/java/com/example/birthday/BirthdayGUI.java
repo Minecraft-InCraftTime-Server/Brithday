@@ -124,6 +124,15 @@ public class BirthdayGUI {
 
     public void saveBirthday(Player player, int month, int day) {
         try {
+            String uuid = player.getUniqueId().toString();
+            // 检查玩家是否已经设置过生日
+            if (plugin.getPlayerDataManager().getBirthday(uuid) != null && !player.hasPermission("birthday.modify")) {
+                player.sendMessage(Component.text("你已经设置过生日了！如需修改请联系管理员。")
+                        .color(NamedTextColor.RED));
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                return;
+            }
+
             if (!isValidDate(month, day)) {
                 player.sendMessage(Component.text("无效的日期！请重新选择。")
                         .color(NamedTextColor.RED));

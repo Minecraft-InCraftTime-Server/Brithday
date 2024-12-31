@@ -1,0 +1,97 @@
+# Birthday Plugin Configuration
+
+# 消息配置
+messages:
+  prefix: "&b&l『ICT』>> &r"
+  birthday-set: "&a生日信息设置成功！你的生日是 %month%月%day%日"
+  birthday-broadcast: "&6&l今天是 %player% 的生日！"
+  birthday-title: "&6&l生日快乐！"
+  birthday-subtitle: "&e祝你生日快乐！"
+  wish-success: "&a感谢你向 %player% 送上生日祝福！"
+  wish-already: "&e你今天已经送过生日祝福了！"
+  no-birthday-today: "&c今天没有人过生日哦！"
+  error-save: "&c保存生日信息时发生错误，请联系管理员！"
+  command-player-only: "&c此命令只能由玩家使用！"
+  birthday-not-set: "&e你还没有设置生日信息！"
+  birthday-info: "&a你的生日是: %month%月%day%日"
+  birthday-reminder: "&e再过%days%天就是你的生日了！"
+
+# 烟花效果配置
+firework:
+  enabled: true
+  count: 5
+  power: 2
+  colors:
+    - RED
+    - YELLOW
+    - BLUE
+  fade-colors:
+    - PINK
+  trail: true
+  flicker: true
+  launch-interval: 10 # ticks
+
+# GUI配置
+gui:
+  enabled: true
+  month-title: "请选择你的生日月份"
+  day-title: "请选择你的生日日期"
+  month-item: PAPER
+  day-item: PAPER
+
+# 系统设置
+settings:
+  check-interval: 72000 # ticks (1小时)
+  save-interval: 6000 # ticks (5分钟)
+  first-join-gui: true
+  reminder-days: 3 # 提前多少天提醒
+  
+# 生日提醒配置
+reminder:
+  enabled: true
+  advance-days: 3 # 提前多少天提醒
+  broadcast: false # 是否全服广播
+  message: "&e再过%days%天就是 %player% 的生日了！"
+  
+      
+# GUI自定义
+gui:
+  month:
+    title: "请选择生日月份"
+    size: 27
+    background: BLACK_STAINED_GLASS_PANE
+    item:
+      material: PAPER
+      name: "&6%month%月"
+      lore:
+        - "&7点击选择"
+  day:
+    title: "请选择生日日期"
+    size: 36
+    background: LIGHT_BLUE_STAINED_GLASS_PANE
+    item:
+      material: PAPER
+      name: "&b%day%日"
+      
+# 特效配置
+effects:
+  duration: 100 # 持续5秒
+  sound:
+    enabled: true
+    sounds:
+      - sound: ENTITY_PLAYER_LEVELUP
+        pitch: 1.0
+        volume: 1.0
+      - sound: ENTITY_FIREWORK_ROCKET_LAUNCH
+        pitch: 0.5
+        volume: 2.0
+  particle:
+    enabled: true
+    interval: 2 # ticks
+    count: 1
+    types:
+      - HEART
+      - TOTEM
+      - NOTE
+    radius: 1.5
+    height-variation: 0.5 

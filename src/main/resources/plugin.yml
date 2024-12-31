@@ -1,0 +1,25 @@
+name: BirthdayPlugin
+version: 1.0
+main: com.example.birthday.BirthdayPlugin
+api-version: '1.21'
+description: 一个功能完善的生日插件
+folia-supported: true
+
+commands:
+  birthday:
+    description: 生日插件命令
+    usage: |
+      /<command> set - 设置生日
+      /<command> check - 查看生日信息
+      /<command> modify - 修改生日信息(需要权限)
+      /<command> reload - 重载配置(需要权限)
+
+permissions:
+  birthday.modify:
+    description: 允许修改生日信息
+    default: op
+  birthday.admin:
+    description: 允许使用管理员命令
+    default: op
+    children:
+      birthday.modify: true 

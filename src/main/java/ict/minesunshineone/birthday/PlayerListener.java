@@ -14,7 +14,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -127,23 +126,6 @@ public class PlayerListener implements Listener {
             plugin.getServer().getRegionScheduler().execute(plugin, event.getPlayer().getLocation(), () -> {
                 checkBirthdayWish(event.getPlayer());
             });
-        }
-    }
-
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title());
-        if ((title.equals("请选择你的生日月份") || title.equals("请选择日期"))
-                && plugin.getPlayerDataManager().getBirthday(event.getPlayer().getUniqueId().toString()) == null) {
-
-            Player player = (Player) event.getPlayer();
-            // 延迟发送消息，确保在GUI完全关闭后
-            plugin.getServer().getRegionScheduler().runDelayed(plugin, player.getLocation(), task -> {
-                player.sendMessage(Component.text("你还没有设置生日信息！")
-                        .color(NamedTextColor.YELLOW));
-                player.sendMessage(Component.text("可以使用 /birthday set 命令重新打开设置界面")
-                        .color(NamedTextColor.YELLOW));
-            }, 1L);
         }
     }
 

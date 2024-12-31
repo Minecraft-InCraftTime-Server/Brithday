@@ -1,6 +1,7 @@
 name: BirthdayPlugin
 version: 1.0
-main: com.example.birthday.BirthdayPlugin
+main: ict.minesunshineone.birthday.BirthdayPlugin
+author: minesunshineone
 api-version: '1.21'
 description: 一个功能完善的生日插件
 folia-supported: true

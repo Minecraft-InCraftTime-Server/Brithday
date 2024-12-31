@@ -1,4 +1,4 @@
-package com.example.birthday;
+package ict.minesunshineone.birthday;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;

@@ -1,4 +1,4 @@
-package com.example.birthday;
+package ict.minesunshineone.birthday;
 
 import java.util.ArrayList;
 import java.util.HashMap;

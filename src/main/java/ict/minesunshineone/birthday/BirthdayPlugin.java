@@ -1,7 +1,6 @@
-package com.example.birthday;
+package ict.minesunshineone.birthday;
 
 import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Calendar;
 import java.util.List;
@@ -29,8 +28,6 @@ import net.kyori.adventure.title.Title;
 
 public class BirthdayPlugin extends JavaPlugin {
 
-    private File birthdayFile;
-    private FileConfiguration birthdayConfig;
     private FileConfiguration config;
     private PlayerDataManager playerDataManager;
 
@@ -39,9 +36,6 @@ public class BirthdayPlugin extends JavaPlugin {
         // 保存默认配置
         saveDefaultConfig();
         config = getConfig();
-
-        // 创建生日数据文件
-        createBirthdayConfig();
 
         // 注册事件监听器
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
@@ -66,33 +60,7 @@ public class BirthdayPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        saveBirthdayConfig();
         getLogger().info("Birthday Plugin has been disabled!");
-    }
-
-    private void createBirthdayConfig() {
-        birthdayFile = new File(getDataFolder(), "birthdays.yml");
-        if (!birthdayFile.exists()) {
-            birthdayFile.getParentFile().mkdirs();
-            try {
-                birthdayFile.createNewFile();
-            } catch (IOException e) {
-                getLogger().severe(String.format("无法创建生日数据文件: %s", e.getMessage()));
-            }
-        }
-        birthdayConfig = YamlConfiguration.loadConfiguration(birthdayFile);
-    }
-
-    public void saveBirthdayConfig() {
-        try {
-            birthdayConfig.save(birthdayFile);
-        } catch (IOException e) {
-            getLogger().severe(String.format("无法保存生日配置文件: %s", e.getMessage()));
-        }
-    }
-
-    public FileConfiguration getBirthdayConfig() {
-        return birthdayConfig;
     }
 
     private void startBirthdayCheckTask() {
@@ -223,11 +191,6 @@ public class BirthdayPlugin extends JavaPlugin {
 
     public void reloadBirthdayConfig() {
         try {
-            // 保存当前配置
-            saveBirthdayConfig();
-            // 重新加载配置
-            birthdayConfig = YamlConfiguration.loadConfiguration(birthdayFile);
-
             // 重新加载默认配置
             reloadConfig();
             config = getConfig();

@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>ict.minesunshineone</groupId>
-    <artifactId>birthday-plugin</artifactId>
+    <artifactId>birthday</artifactId>
     <version>1.0</version>
 
     <properties>

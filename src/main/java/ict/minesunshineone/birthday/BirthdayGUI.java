@@ -117,7 +117,7 @@ public class BirthdayGUI {
     public int getDaysInMonth(int month) {
         return switch (month) {
             case 2 ->
-                29; // 简化处理，统一29天
+                28; // 2025年2月是28天
             case 4, 6, 9, 11 ->
                 30;
             default ->

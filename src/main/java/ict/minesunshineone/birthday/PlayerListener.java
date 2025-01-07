@@ -175,18 +175,18 @@ public class PlayerListener implements Listener {
             User user = luckPerms.getUserManager().getUser(player.getUniqueId());
 
             if (user != null) {
-                // 先移除旧的生日称号
+                // 先移除旧的生日后缀
                 user.data().clear(node
-                        -> node.getKey().startsWith("prefix.")
+                        -> node.getKey().startsWith("suffix.")
                         && node.getKey().contains("『🎂寿星』")
                 );
 
-                // 添加新称号,设置24小时过期
-                Node prefixNode = Node.builder("prefix.100.&6&l『🎂寿星』")
+                // 添加新后缀,设置24小时过期
+                Node suffixNode = Node.builder("suffix.100.&6&l『🎂寿星』")
                         .expiry(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
                         .build();
 
-                user.data().add(prefixNode);
+                user.data().add(suffixNode);
                 luckPerms.getUserManager().saveUser(user);
             }
         }

@@ -37,6 +37,9 @@ public class BirthdayPlugin extends JavaPlugin {
         saveDefaultConfig();
         config = getConfig();
 
+        // 初始化 PlayerDataManager
+        playerDataManager = new PlayerDataManager(this);
+
         // 注册事件监听器
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
 
@@ -52,8 +55,6 @@ public class BirthdayPlugin extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
-
-        playerDataManager = new PlayerDataManager(this);
 
         getLogger().info("Birthday Plugin has been enabled!");
     }

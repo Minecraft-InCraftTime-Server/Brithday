@@ -1,14 +1,20 @@
 package ict.minesunshineone.birthday;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-public class BirthdayCommand implements CommandExecutor {
+public class BirthdayCommand implements CommandExecutor, TabCompleter {
 
     private final BirthdayPlugin plugin;
     private final BirthdayGUI gui;
@@ -65,6 +71,25 @@ public class BirthdayCommand implements CommandExecutor {
                 return true;
             }
         }
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 1) {
+            List<String> completions = new ArrayList<>();
+            completions.add("set");
+            completions.add("check");
+            if (sender.hasPermission("birthday.modify")) {
+                completions.add("modify");
+            }
+            if (sender.hasPermission("birthday.admin")) {
+                completions.add("reload");
+            }
+            return completions.stream()
+                    .filter(s -> s.startsWith(args[0].toLowerCase()))
+                    .collect(Collectors.toList());
+        }
+        return Collections.emptyList();
     }
 
     private void showHelpMessage(Player player) {

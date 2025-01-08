@@ -22,9 +22,62 @@ public class BirthdayGUI {
 
     private final BirthdayPlugin plugin;
     private final Map<UUID, Integer> selectedMonths = new HashMap<>();
+    private final Map<UUID, UUID> modifyTargets = new HashMap<>();
 
     public BirthdayGUI(BirthdayPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    public void openBirthdayGUI(Player player, UUID targetUUID) {
+        Player targetPlayer = Bukkit.getPlayer(targetUUID);
+        if (targetPlayer != null) {
+            modifyTargets.put(player.getUniqueId(), targetUUID);
+            plugin.getServer().getRegionScheduler().execute(plugin, player.getLocation(), () -> {
+                Inventory gui = Bukkit.createInventory(null, 36,
+                        Component.text("修改 " + targetPlayer.getName() + " 的生日月份").color(NamedTextColor.GOLD));
+
+                // 添加装饰性边框
+                ItemStack border = new ItemStack(Material.LIGHT_BLUE_STAINED_GLASS_PANE);
+                ItemMeta borderMeta = border.getItemMeta();
+                borderMeta.displayName(Component.text(" "));
+                border.setItemMeta(borderMeta);
+
+                // 设置边框
+                for (int i = 0; i < 36; i++) {
+                    if (i < 9 || i > 26 || i % 9 == 0 || i % 9 == 8) {
+                        gui.setItem(i, border);
+                    }
+                }
+
+                // 添加月份选择按钮
+                for (int month = 1; month <= 12; month++) {
+                    ItemStack monthItem = new ItemStack(Material.PAPER);
+                    ItemMeta meta = monthItem.getItemMeta();
+                    meta.displayName(Component.text(month + "月")
+                            .color(NamedTextColor.GOLD)
+                            .decorate(TextDecoration.BOLD));
+
+                    List<Component> lore = new ArrayList<>();
+                    lore.add(Component.text("点击选择 " + month + " 月")
+                            .color(NamedTextColor.GRAY));
+                    meta.lore(lore);
+                    monthItem.setItemMeta(meta);
+
+                    // 计算位置 (2x6 布局)
+                    int row = (month - 1) / 6;
+                    int col = (month - 1) % 6;
+                    if (row == 1) { // 如果是第二行(7-12月)
+                        col += 1; // 向右移动一列
+                    }
+                    int slot = 10 + col + (row * 9);
+                    gui.setItem(slot, monthItem);
+                }
+
+                player.openInventory(gui);
+            });
+        } else {
+            player.sendMessage(Component.text("目标玩家必须在线！").color(NamedTextColor.RED));
+        }
     }
 
     public void openBirthdayGUI(Player player) {
@@ -74,10 +127,16 @@ public class BirthdayGUI {
     }
 
     public void openDayGUI(Player player, int month) {
+        UUID targetUUID = modifyTargets.getOrDefault(player.getUniqueId(), player.getUniqueId());
+        Player targetPlayer = Bukkit.getPlayer(targetUUID);
+        String title = targetPlayer != null && !targetPlayer.equals(player)
+                ? "修改 " + targetPlayer.getName() + " 的生日日期"
+                : "请选择日期";
+
         selectedMonths.put(player.getUniqueId(), month);
         plugin.getServer().getRegionScheduler().execute(plugin, player.getLocation(), () -> {
             Inventory gui = Bukkit.createInventory(null, 54,
-                    Component.text("请选择日期").color(NamedTextColor.GOLD));
+                    Component.text(title).color(NamedTextColor.GOLD));
 
             // 添加装饰性边框
             ItemStack border = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
@@ -127,29 +186,36 @@ public class BirthdayGUI {
 
     public void saveBirthday(Player player, int month, int day) {
         try {
-            String uuid = player.getUniqueId().toString();
-            // 检查玩家是否已经设置过生日
-            if (plugin.getPlayerDataManager().getBirthday(uuid) != null && !player.hasPermission("birthday.modify")) {
-                player.sendMessage(Component.text("你已经设置过生日了！如需修改请联系管理员。")
-                        .color(NamedTextColor.RED));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            UUID targetUUID = modifyTargets.getOrDefault(player.getUniqueId(), player.getUniqueId());
+            Player targetPlayer = Bukkit.getPlayer(targetUUID);
+
+            if (!player.getUniqueId().equals(targetUUID) && !player.hasPermission("birthday.modify")) {
+                player.sendMessage(Component.text("你没有权限修改其他玩家的生日信息！").color(NamedTextColor.RED));
                 return;
             }
 
             if (!isValidDate(month, day)) {
-                player.sendMessage(Component.text("无效的日期！请重新选择。")
-                        .color(NamedTextColor.RED));
+                player.sendMessage(Component.text("无效的日期！请重新选择。").color(NamedTextColor.RED));
                 openBirthdayGUI(player);
                 return;
             }
 
-            plugin.getPlayerDataManager().saveBirthday(player, month, day);
-            player.sendMessage(Component.text("生日信息设置成功！你的生日是 " + month + "月" + day + "日")
-                    .color(NamedTextColor.GREEN));
+            // 使用目标玩家的UUID保存生日信息
+            if (targetPlayer != null) {
+                plugin.getPlayerDataManager().saveBirthday(targetPlayer, month, day);
+                player.sendMessage(Component.text("生日信息设置成功！" + targetPlayer.getName() + "的生日是 " + month + "月" + day + "日")
+                        .color(NamedTextColor.GREEN));
+            } else {
+                player.sendMessage(Component.text("目标玩家必须在线！").color(NamedTextColor.RED));
+                return;
+            }
+
             player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+
+            // 清除修改目标
+            modifyTargets.remove(player.getUniqueId());
         } catch (Exception e) {
-            player.sendMessage(Component.text("保存生日信息时发生错误，请联系管理员！")
-                    .color(NamedTextColor.RED));
+            player.sendMessage(Component.text("保存生日信息时发生错误，请联系管理员！").color(NamedTextColor.RED));
             plugin.getLogger().severe(String.format("保存玩家生日信息时发生错误: %s", e.getMessage()));
         }
     }

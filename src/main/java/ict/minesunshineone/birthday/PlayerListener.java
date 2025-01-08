@@ -67,6 +67,15 @@ public class PlayerListener implements Listener {
     public void onInventoryClick(InventoryClickEvent event) {
         String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title());
         Player player = (Player) event.getWhoClicked();
+
+        // 检查是否是修改他人生日
+        if (title.startsWith("修改 ") && !player.hasPermission("birthday.modify")) {
+            event.setCancelled(true);
+            player.closeInventory();
+            player.sendMessage(Component.text("你没有权限修改其他玩家的生日！").color(NamedTextColor.RED));
+            return;
+        }
+
         String uuid = player.getUniqueId().toString();
 
         // 检查玩家是否已经设置过生日且没有修改权限

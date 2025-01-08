@@ -4,6 +4,7 @@ main: ict.minesunshineone.birthday.BirthdayPlugin
 author: minesunshineone
 api-version: '1.21'
 description: 一个功能完善的生日插件
+softdepend: [PlaceholderAPI] 
 folia-supported: true
 
 commands:

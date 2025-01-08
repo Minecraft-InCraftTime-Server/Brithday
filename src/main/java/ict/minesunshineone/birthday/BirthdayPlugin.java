@@ -57,6 +57,12 @@ public class BirthdayPlugin extends JavaPlugin {
         }
 
         getLogger().info("Birthday Plugin has been enabled!");
+
+        // 注册 PAPI 扩展
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new BirthdayPlaceholder(this).register();
+            getLogger().info("PlaceholderAPI 扩展注册成功!");
+        }
     }
 
     @Override

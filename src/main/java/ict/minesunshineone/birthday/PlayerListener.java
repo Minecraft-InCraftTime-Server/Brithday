@@ -1,9 +1,9 @@
 package ict.minesunshineone.birthday;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.Calendar;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -192,7 +192,7 @@ public class PlayerListener implements Listener {
 
                 // 添加新后缀,设置24小时过期
                 Node suffixNode = Node.builder("suffix.100.&6&l『🎂寿星』")
-                        .expiry(System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
+                        .expiry(Duration.ofHours(24))
                         .build();
 
                 user.data().add(suffixNode);

@@ -19,12 +19,16 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.model.user.User;
+import net.luckperms.api.node.Node;
 
 public class BirthdayPlugin extends JavaPlugin {
 
@@ -74,7 +78,6 @@ public class BirthdayPlugin extends JavaPlugin {
         long checkInterval = config.getLong("settings.check-interval", 72000L);
         getServer().getAsyncScheduler().runAtFixedRate(this,
                 task -> {
-                    checkBirthdays();
                     checkUpcomingBirthdays();
                 },
                 0L,
@@ -83,48 +86,22 @@ public class BirthdayPlugin extends JavaPlugin {
         );
     }
 
-    private void checkBirthdays() {
-        Calendar today = Calendar.getInstance();
-        int currentMonth = today.get(Calendar.MONTH) + 1;
-        int currentDay = today.get(Calendar.DAY_OF_MONTH);
-        String todayString = currentMonth + "-" + currentDay;
-
-        File playerDataFolder = new File(getDataFolder(), "player_data");
-        File[] playerFiles = playerDataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
-
-        if (playerFiles != null) {
-            for (File file : playerFiles) {
-                String uuid = file.getName().replace(".yml", "");
-                YamlConfiguration playerData = playerDataManager.getPlayerData(uuid);
-                String birthdayString = playerData.getString("birthday");
-                String playerName = playerData.getString("name");
-
-                if (birthdayString != null && birthdayString.equals(todayString)) {
-                    broadcastBirthdayMessage(playerName);
-                    Player player = Bukkit.getPlayer(UUID.fromString(uuid));
-                    if (player != null && player.isOnline()) {
-                        celebrateBirthday(player);
-                    }
-                }
-            }
-        }
-    }
-
-    private void broadcastBirthdayMessage(String playerName) {
-        Component message = Component.text("今天是 ")
-                .color(NamedTextColor.GOLD)
-                .decorate(TextDecoration.BOLD)
-                .append(Component.text(playerName))
-                .append(Component.text(" 的生日！"));
-        Bukkit.broadcast(message);
-    }
-
     public void celebrateBirthday(Player player) {
         player.showTitle(Title.title(
                 Component.text("生日快乐！").color(NamedTextColor.GOLD).decorate(TextDecoration.BOLD),
                 Component.text("祝你生日快乐！").color(NamedTextColor.YELLOW),
                 Title.Times.times(Duration.ofSeconds(1), Duration.ofSeconds(5), Duration.ofSeconds(1))
         ));
+        setBirthdayPrefix(player);
+
+        Bukkit.broadcast(Component.text("今天是 ")
+                .color(NamedTextColor.YELLOW)
+                .append(Component.text(player.getName())
+                        .color(NamedTextColor.GOLD))
+                .append(Component.text(" 的生日！")
+                        .color(NamedTextColor.YELLOW))
+                .append(Component.text(" (发送\"生日快乐\"可以获得蛋糕哦)")
+                        .color(NamedTextColor.GRAY)));
 
         spawnBirthdayFireworks(player);
         playBirthdayEffects(player);
@@ -279,5 +256,29 @@ public class BirthdayPlugin extends JavaPlugin {
         }
 
         return (int) ((birthday.getTimeInMillis() - today.getTimeInMillis()) / (1000 * 60 * 60 * 24));
+    }
+
+    private void setBirthdayPrefix(Player player) {
+        RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
+        if (provider != null) {
+            LuckPerms luckPerms = provider.getProvider();
+            User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+
+            if (user != null) {
+                // 先移除旧的生日后缀
+                user.data().clear(node
+                        -> node.getKey().startsWith("suffix.")
+                        && node.getKey().contains("『🎂寿星』")
+                );
+
+                // 添加新后缀,设置24小时过期
+                Node suffixNode = Node.builder("suffix.100.&6&l『🎂寿星』")
+                        .expiry(Duration.ofHours(24))
+                        .build();
+
+                user.data().add(suffixNode);
+                luckPerms.getUserManager().saveUser(user);
+            }
+        }
     }
 }

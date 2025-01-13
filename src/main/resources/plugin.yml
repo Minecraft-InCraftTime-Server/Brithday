@@ -1,5 +1,5 @@
 name: BirthdayPlugin
-version: 1.0
+version: 1.4
 main: ict.minesunshineone.birthday.BirthdayPlugin
 author: minesunshineone
 api-version: '1.21'

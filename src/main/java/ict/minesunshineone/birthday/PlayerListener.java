@@ -1,11 +1,9 @@
 package ict.minesunshineone.birthday;
 
 import java.io.File;
-import java.time.Duration;
 import java.util.Calendar;
 import java.util.List;
 
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -16,15 +14,11 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.plugin.RegisteredServiceProvider;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
-import net.luckperms.api.LuckPerms;
-import net.luckperms.api.model.user.User;
-import net.luckperms.api.node.Node;
 
 public class PlayerListener implements Listener {
 
@@ -58,7 +52,19 @@ public class PlayerListener implements Listener {
 
                 player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             } else {
-                checkPlayerBirthday(player);
+                Calendar today = Calendar.getInstance();
+                int currentMonth = today.get(Calendar.MONTH) + 1;
+                int currentDay = today.get(Calendar.DAY_OF_MONTH);
+                String todayString = currentMonth + "-" + currentDay;
+
+                YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(uuid);
+                String birthdayString = playerData.getString("birthday");
+                String lastCelebrated = playerData.getString("last_celebrated");
+
+                if (birthdayString != null && birthdayString.equals(todayString) && !todayString.equals(lastCelebrated)) {
+                    plugin.celebrateBirthday(player);
+                    plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
+                }
             }
         }, 20L);
     }
@@ -135,69 +141,6 @@ public class PlayerListener implements Listener {
             plugin.getServer().getRegionScheduler().execute(plugin, event.getPlayer().getLocation(), () -> {
                 checkBirthdayWish(event.getPlayer());
             });
-        }
-    }
-
-    private void checkPlayerBirthday(Player player) {
-        Calendar today = Calendar.getInstance();
-        int currentMonth = today.get(Calendar.MONTH) + 1;
-        int currentDay = today.get(Calendar.DAY_OF_MONTH);
-        String todayString = currentMonth + "-" + currentDay;
-
-        String uuid = player.getUniqueId().toString();
-        YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(uuid);
-        String birthdayString = playerData.getString("birthday");
-        String lastCelebrated = playerData.getString("last_celebrated");
-
-        if (birthdayString != null && !todayString.equals(lastCelebrated)) {
-            String[] birthdayParts = birthdayString.split("-");
-            try {
-                int month = Integer.parseInt(birthdayParts[0]);
-                int day = Integer.parseInt(birthdayParts[1]);
-
-                if (month == currentMonth && day == currentDay) {
-                    setBirthdayPrefix(player);
-
-                    Bukkit.broadcast(Component.text("今天是 ")
-                            .color(NamedTextColor.YELLOW)
-                            .append(Component.text(player.getName())
-                                    .color(NamedTextColor.GOLD))
-                            .append(Component.text(" 的生日！")
-                                    .color(NamedTextColor.YELLOW))
-                            .append(Component.text(" (发送\"生日快乐\"可以获得蛋糕哦)")
-                                    .color(NamedTextColor.GRAY)));
-
-                    plugin.celebrateBirthday(player);
-
-                    plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
-                }
-            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                plugin.getLogger().warning(String.format("Invalid birthday format for player: %s", player.getName()));
-            }
-        }
-    }
-
-    private void setBirthdayPrefix(Player player) {
-        RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
-        if (provider != null) {
-            LuckPerms luckPerms = provider.getProvider();
-            User user = luckPerms.getUserManager().getUser(player.getUniqueId());
-
-            if (user != null) {
-                // 先移除旧的生日后缀
-                user.data().clear(node
-                        -> node.getKey().startsWith("suffix.")
-                        && node.getKey().contains("『🎂寿星』")
-                );
-
-                // 添加新后缀,设置24小时过期
-                Node suffixNode = Node.builder("suffix.100.&6&l『🎂寿星』")
-                        .expiry(Duration.ofHours(24))
-                        .build();
-
-                user.data().add(suffixNode);
-                luckPerms.getUserManager().saveUser(user);
-            }
         }
     }
 

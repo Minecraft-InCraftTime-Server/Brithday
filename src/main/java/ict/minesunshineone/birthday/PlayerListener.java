@@ -12,7 +12,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -201,15 +200,6 @@ public class PlayerListener implements Listener {
         } else {
             String message = plugin.getConfig().getString("messages.wish-already", "你今天已经送过生日祝福了！");
             sender.sendMessage(Component.text(message != null ? message : "你今天已经送过生日祝福了！").color(NamedTextColor.YELLOW));
-        }
-    }
-
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        String title = PlainTextComponentSerializer.plainText().serialize(event.getView().title());
-        if (title.equals("请选择你的生日月份") || title.equals("请选择日期") || title.startsWith("修改 ")) {
-            Player player = (Player) event.getPlayer();
-            birthdayGUI.clearPlayerData(player.getUniqueId());
         }
     }
 }

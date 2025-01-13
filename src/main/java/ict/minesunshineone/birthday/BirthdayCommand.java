@@ -1,5 +1,6 @@
 package ict.minesunshineone.birthday;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,6 +12,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.Component;
@@ -65,11 +67,6 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
                         return true;
                     }
                     String targetName = args[1];
-                    Player targetPlayer = Bukkit.getPlayer(targetName);
-                    if (targetPlayer == null) {
-                        player.sendMessage(Component.text("找不到玩家: " + targetName).color(NamedTextColor.RED));
-                        return true;
-                    }
 
                     try {
                         int month = Integer.parseInt(args[2]);
@@ -80,8 +77,42 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
                             return true;
                         }
 
-                        plugin.getPlayerDataManager().saveBirthday(targetPlayer, month, day);
-                        player.sendMessage(Component.text("已将 " + targetPlayer.getName() + " 的生日设置为 " + month + "月" + day + "日")
+                        // 获取在线玩家或从历史数据中获取UUID
+                        Player targetPlayer = Bukkit.getPlayer(targetName);
+                        String targetUUID;
+
+                        if (targetPlayer != null) {
+                            targetUUID = targetPlayer.getUniqueId().toString();
+                        } else {
+                            // 检查离线玩家数据
+                            File playerDataFolder = new File(plugin.getDataFolder(), "player_data");
+                            File[] files = playerDataFolder.listFiles();
+                            if (files != null) {
+                                targetUUID = null;
+                                for (File file : files) {
+                                    YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
+                                    if (targetName.equals(data.getString("name"))) {
+                                        targetUUID = file.getName().replace(".yml", "");
+                                        break;
+                                    }
+                                }
+                                if (targetUUID == null) {
+                                    player.sendMessage(Component.text("找不到玩家: " + targetName).color(NamedTextColor.RED));
+                                    return true;
+                                }
+                            } else {
+                                player.sendMessage(Component.text("无法读取玩家数据！").color(NamedTextColor.RED));
+                                return true;
+                            }
+                        }
+
+                        // 保存生日信息
+                        YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(targetUUID);
+                        playerData.set("name", targetName);
+                        playerData.set("birthday", month + "-" + day);
+                        plugin.getPlayerDataManager().savePlayerData(targetUUID, playerData);
+
+                        player.sendMessage(Component.text("已将 " + targetName + " 的生日设置为 " + month + "月" + day + "日")
                                 .color(NamedTextColor.GREEN));
 
                     } catch (NumberFormatException e) {

@@ -21,6 +21,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -30,6 +31,8 @@ public class BirthdayPlugin extends JavaPlugin {
 
     private FileConfiguration config;
     private PlayerDataManager playerDataManager;
+    private ScheduledTask birthdayCheckTask;
+    private BirthdayGUI gui;
 
     @Override
     public void onEnable() {
@@ -43,9 +46,6 @@ public class BirthdayPlugin extends JavaPlugin {
         // 注册事件监听器
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
 
-        // 启动生日检查任务
-        startBirthdayCheckTask();
-
         // 注册命令
         var birthdayCommand = getCommand("birthday");
         if (birthdayCommand != null) {
@@ -56,6 +56,8 @@ public class BirthdayPlugin extends JavaPlugin {
             return;
         }
 
+        startBirthdayCheckTask();
+
         getLogger().info("Birthday Plugin has been enabled!");
 
         // 注册 PAPI 扩展
@@ -63,22 +65,50 @@ public class BirthdayPlugin extends JavaPlugin {
             new BirthdayPlaceholder(this).register();
             getLogger().info("PlaceholderAPI 扩展注册成功!");
         }
+
+        gui = new BirthdayGUI(this);
     }
 
     @Override
     public void onDisable() {
-        getLogger().info("Birthday Plugin has been disabled!");
+        try {
+            if (birthdayCheckTask != null) {
+                birthdayCheckTask.cancel();
+            }
+            getServer().getAsyncScheduler().cancelTasks(this);
+            getServer().getGlobalRegionScheduler().cancelTasks(this);
+
+            // 清理所有在线玩家的GUI数据
+            for (Player player : Bukkit.getOnlinePlayers()) {
+                if (player.getOpenInventory().title().toString().contains("生日")) {
+                    player.closeInventory();
+                    gui.cleanupPlayerData(player.getUniqueId());
+                }
+            }
+        } catch (Exception e) {
+            getLogger().severe(String.format("插件禁用时发生错误: %s", e.getMessage()));
+        }
     }
 
     private void startBirthdayCheckTask() {
+        // 每60分钟检查一次
         long checkInterval = config.getLong("settings.check-interval", 72000L);
-        getServer().getAsyncScheduler().runAtFixedRate(this,
-                task -> {
-                    checkBirthdays();
-                    checkUpcomingBirthdays();
-                },
-                0L,
-                checkInterval * 50L, // 转换 ticks 到毫秒
+
+        // 获取当前时间
+        Calendar now = Calendar.getInstance();
+        // 计算到下一个整点的延迟
+        Calendar nextHour = Calendar.getInstance();
+        nextHour.set(Calendar.MINUTE, 0);
+        nextHour.set(Calendar.SECOND, 0);
+        nextHour.set(Calendar.MILLISECOND, 0);
+        nextHour.add(Calendar.HOUR_OF_DAY, 1);
+
+        long initialDelay = nextHour.getTimeInMillis() - now.getTimeInMillis();
+
+        birthdayCheckTask = getServer().getAsyncScheduler().runAtFixedRate(this,
+                task -> checkBirthdays(),
+                initialDelay,
+                checkInterval * 50L,
                 TimeUnit.MILLISECONDS
         );
     }
@@ -208,76 +238,7 @@ public class BirthdayPlugin extends JavaPlugin {
         }
     }
 
-    private void checkUpcomingBirthdays() {
-        Calendar today = Calendar.getInstance();
-        int currentMonth = today.get(Calendar.MONTH) + 1;
-        int currentDay = today.get(Calendar.DAY_OF_MONTH);
-        int reminderDays = config.getInt("reminder.advance-days", 3);
-        boolean broadcastEnabled = config.getBoolean("reminder.broadcast", false);
-        String reminderMessage = config.getString("reminder.message", "再过%days%天就是 %player% 的生日了！");
-
-        File playerDataFolder = new File(getDataFolder(), "player_data");
-        if (!playerDataFolder.exists() || !playerDataFolder.isDirectory()) {
-            return;
-        }
-
-        File[] playerFiles = playerDataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
-        if (playerFiles == null) {
-            return;
-        }
-
-        for (File file : playerFiles) {
-            String uuid = file.getName().replace(".yml", "");
-            YamlConfiguration playerData = YamlConfiguration.loadConfiguration(file);
-            String birthdayString = playerData.getString("birthday");
-            String playerName = playerData.getString("name");
-
-            if (birthdayString != null && playerName != null) {
-                try {
-                    String[] parts = birthdayString.split("-");
-                    int month = Integer.parseInt(parts[0]);
-                    int day = Integer.parseInt(parts[1]);
-
-                    int daysUntil = calculateDaysUntilBirthday(currentMonth, currentDay, month, day);
-
-                    if (daysUntil == reminderDays) {
-                        Player player = Bukkit.getPlayer(UUID.fromString(uuid));
-                        if (player != null && player.isOnline()) {
-                            String message = (reminderMessage != null ? reminderMessage : "再过%days%天就是 %player% 的生日了！")
-                                    .replace("%days%", String.valueOf(reminderDays))
-                                    .replace("%player%", playerName);
-
-                            if (broadcastEnabled) {
-                                Bukkit.broadcast(Component.text(message).color(NamedTextColor.YELLOW));
-                            } else {
-                                player.sendMessage(Component.text(message).color(NamedTextColor.YELLOW));
-                            }
-                        }
-                    }
-                } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                    getLogger().warning(String.format("检查生日提醒时发生错误 (玩家: %s): %s", playerName, e.getMessage()));
-                }
-            }
-        }
-    }
-
     public PlayerDataManager getPlayerDataManager() {
         return playerDataManager;
-    }
-
-    private int calculateDaysUntilBirthday(int currentMonth, int currentDay, int birthMonth, int birthDay) {
-        Calendar today = Calendar.getInstance();
-        today.set(Calendar.MONTH, currentMonth - 1);
-        today.set(Calendar.DAY_OF_MONTH, currentDay);
-
-        Calendar birthday = Calendar.getInstance();
-        birthday.set(Calendar.MONTH, birthMonth - 1);
-        birthday.set(Calendar.DAY_OF_MONTH, birthDay);
-
-        if (birthday.before(today)) {
-            birthday.add(Calendar.YEAR, 1);
-        }
-
-        return (int) ((birthday.getTimeInMillis() - today.getTimeInMillis()) / (1000 * 60 * 60 * 24));
     }
 }

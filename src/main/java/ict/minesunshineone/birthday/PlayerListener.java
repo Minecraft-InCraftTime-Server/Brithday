@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -138,6 +139,13 @@ public class PlayerListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (event.getView().title().toString().contains("生日")) {
+            birthdayGUI.cleanupPlayerData(event.getPlayer().getUniqueId());
+        }
+    }
+
     private void checkPlayerBirthday(Player player) {
         Calendar today = Calendar.getInstance();
         int currentMonth = today.get(Calendar.MONTH) + 1;
@@ -149,31 +157,32 @@ public class PlayerListener implements Listener {
         String birthdayString = playerData.getString("birthday");
         String lastCelebrated = playerData.getString("last_celebrated");
 
-        if (birthdayString != null && !todayString.equals(lastCelebrated)) {
-            String[] birthdayParts = birthdayString.split("-");
-            try {
-                int month = Integer.parseInt(birthdayParts[0]);
-                int day = Integer.parseInt(birthdayParts[1]);
+        // 检查是否是生日
+        if (birthdayString != null && birthdayString.equals(todayString)) {
+            // 检查今天是否已经庆祝过
+            if (!todayString.equals(lastCelebrated)) {
+                // 设置生日称号
+                setBirthdayPrefix(player);
 
-                if (month == currentMonth && day == currentDay) {
-                    setBirthdayPrefix(player);
+                // 广播消息
+                Bukkit.broadcast(Component.text("今天是 ")
+                        .color(NamedTextColor.YELLOW)
+                        .append(Component.text(player.getName())
+                                .color(NamedTextColor.GOLD))
+                        .append(Component.text(" 的生日！")
+                                .color(NamedTextColor.YELLOW))
+                        .append(Component.text(" (发送\"生日快乐\"可以获得蛋糕哦)")
+                                .color(NamedTextColor.GRAY)));
 
-                    Bukkit.broadcast(Component.text("今天是 ")
-                            .color(NamedTextColor.YELLOW)
-                            .append(Component.text(player.getName())
-                                    .color(NamedTextColor.GOLD))
-                            .append(Component.text(" 的生日！")
-                                    .color(NamedTextColor.YELLOW))
-                            .append(Component.text(" (发送\"生日快乐\"可以获得蛋糕哦)")
-                                    .color(NamedTextColor.GRAY)));
+                // 执行庆祝效果
+                plugin.celebrateBirthday(player);
 
-                    plugin.celebrateBirthday(player);
-
-                    plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
-                }
-            } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-                plugin.getLogger().warning(String.format("Invalid birthday format for player: %s", player.getName()));
+                // 记录已庆祝
+                plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
             }
+        } else {
+            // 如果不是生日但有生日称号，移除称号
+            removeBirthdayPrefix(player);
         }
     }
 
@@ -196,6 +205,23 @@ public class PlayerListener implements Listener {
                         .build();
 
                 user.data().add(suffixNode);
+                luckPerms.getUserManager().saveUser(user);
+            }
+        }
+    }
+
+    private void removeBirthdayPrefix(Player player) {
+        RegisteredServiceProvider<LuckPerms> provider = Bukkit.getServicesManager().getRegistration(LuckPerms.class);
+        if (provider != null) {
+            LuckPerms luckPerms = provider.getProvider();
+            User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+
+            if (user != null) {
+                // 移除生日称号
+                user.data().clear(node
+                        -> node.getKey().startsWith("suffix.")
+                        && node.getKey().contains("『🎂寿星』")
+                );
                 luckPerms.getUserManager().saveUser(user);
             }
         }

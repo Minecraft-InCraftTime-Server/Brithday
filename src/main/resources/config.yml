@@ -52,16 +52,10 @@ gui:
 
 # 系统设置
 settings:
-  check-interval: 72000 # ticks (1小时)
+  check-interval: 72000 # ticks (60分钟)
   save-interval: 6000 # ticks (5分钟)
   first-join-gui: true
-
-# 生日提醒配置
-reminder:
-  enabled: true
-  advance-days: 3 # 提前多少天提醒
-  broadcast: false # 是否全服广播
-  message: "&e再过%days%天就是 %player% 的生日了！"
+  first-join-delay: 20 # ticks (1秒，首次进入服务器时检查延迟)
 
 # 特效配置
 effects:

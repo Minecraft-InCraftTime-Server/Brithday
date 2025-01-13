@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -43,6 +44,13 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
 
         switch (args[0].toLowerCase()) {
             case "set" -> {
+                String uuid = player.getUniqueId().toString();
+                if (plugin.getPlayerDataManager().getBirthday(uuid) != null && !player.hasPermission("birthday.modify")) {
+                    player.sendMessage(Component.text("你已经设置过生日了！如需修改请联系管理员。")
+                            .color(NamedTextColor.RED));
+                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                    return true;
+                }
                 gui.openBirthdayGUI(player);
                 return true;
             }

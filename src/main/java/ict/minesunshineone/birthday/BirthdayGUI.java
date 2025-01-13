@@ -232,9 +232,4 @@ public class BirthdayGUI {
     public int getSelectedMonth(Player player) {
         return selectedMonths.getOrDefault(player.getUniqueId(), 1);
     }
-
-    public void cleanupPlayerData(UUID playerUUID) {
-        modifyTargets.remove(playerUUID);
-        selectedMonths.remove(playerUUID);
-    }
 }

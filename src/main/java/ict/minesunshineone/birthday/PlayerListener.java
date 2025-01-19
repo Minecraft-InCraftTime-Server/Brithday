@@ -1,6 +1,7 @@
 package ict.minesunshineone.birthday;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
@@ -153,6 +154,8 @@ public class PlayerListener implements Listener {
         File playerDataFolder = new File(plugin.getDataFolder(), "player_data");
         File[] playerFiles = playerDataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
 
+        List<String> birthdayPlayers = new ArrayList<>();
+
         if (playerFiles != null) {
             for (File file : playerFiles) {
                 String uuid = file.getName().replace(".yml", "");
@@ -161,24 +164,22 @@ public class PlayerListener implements Listener {
 
                 if (birthdayString != null && birthdayString.equals(todayString)) {
                     String playerName = playerData.getString("name");
-                    handleBirthdayWish(sender, playerName, todayString);
-                    return;
+                    if (playerName != null) {
+                        birthdayPlayers.add(playerName);
+                    }
                 }
             }
         }
 
-        sender.sendMessage(Component.text("今天没有人过生日哦！")
-                .color(NamedTextColor.RED));
-    }
-
-    private void handleBirthdayWish(Player sender, String birthdayPlayerName, String todayString) {
-        // 首先检查今天是否真的有人过生日
-        if (birthdayPlayerName == null) {
+        if (!birthdayPlayers.isEmpty()) {
+            handleBirthdayWish(sender, birthdayPlayers, todayString);
+        } else {
             sender.sendMessage(Component.text("今天没有人过生日哦！")
                     .color(NamedTextColor.RED));
-            return;
         }
+    }
 
+    private void handleBirthdayWish(Player sender, List<String> birthdayPlayers, String todayString) {
         String uuid = sender.getUniqueId().toString();
         YamlConfiguration wishData = plugin.getPlayerDataManager().getPlayerData(uuid);
         String wishKey = "wishes." + todayString;
@@ -188,9 +189,13 @@ public class PlayerListener implements Listener {
             plugin.getServer().getRegionScheduler().execute(plugin, sender.getLocation(), () -> {
                 ItemStack cake = new ItemStack(Material.CAKE, 1);
                 sender.getInventory().addItem(cake);
-                String message = plugin.getConfig().getString("messages.wish-success", "感谢你向 %player% 送上生日祝福！");
-                sender.sendMessage(Component.text(message != null ? message : "感谢你向 %player% 送上生日祝福！")
-                        .replaceText(builder -> builder.match("%player%").replacement(birthdayPlayerName))
+
+                String playersString = String.join("、", birthdayPlayers);
+                sender.sendMessage(Component.text("今天过生日的玩家：")
+                        .color(NamedTextColor.GOLD)
+                        .append(Component.text(playersString)
+                                .color(NamedTextColor.YELLOW)));
+                sender.sendMessage(Component.text("感谢你送上生日祝福！")
                         .color(NamedTextColor.GREEN));
             });
 
@@ -199,7 +204,8 @@ public class PlayerListener implements Listener {
             plugin.getPlayerDataManager().savePlayerData(uuid, wishData);
         } else {
             String message = plugin.getConfig().getString("messages.wish-already", "你今天已经送过生日祝福了！");
-            sender.sendMessage(Component.text(message != null ? message : "你今天已经送过生日祝福了！").color(NamedTextColor.YELLOW));
+            sender.sendMessage(Component.text(message != null ? message : "你今天已经送过生日祝福了！")
+                    .color(NamedTextColor.YELLOW));
         }
     }
 }

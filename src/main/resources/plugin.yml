@@ -1,5 +1,5 @@
 name: BirthdayPlugin
-version: <project.version>
+version: ${project.version}
 main: ict.minesunshineone.birthday.BirthdayPlugin
 author: minesunshineone
 api-version: '1.21'

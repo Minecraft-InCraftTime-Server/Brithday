@@ -202,9 +202,37 @@ public class BirthdayGUI {
 
             // 使用目标玩家的UUID保存生日信息
             if (targetPlayer != null) {
+                String uuid = targetPlayer.getUniqueId().toString();
+                String existingBirthday = plugin.getPlayerDataManager().getBirthday(uuid);
+                
                 plugin.getPlayerDataManager().saveBirthday(targetPlayer, month, day);
-                player.sendMessage(Component.text("生日信息设置成功！" + targetPlayer.getName() + "的生日是 " + month + "月" + day + "日")
-                        .color(NamedTextColor.GREEN));
+                
+                if (player.getUniqueId().equals(targetUUID)) {
+                    // 玩家为自己设置生日
+                    if (existingBirthday != null) {
+                        player.sendMessage(Component.text("🎉 生日信息已更新！你的生日是 " + month + "月" + day + "日")
+                                .color(NamedTextColor.GREEN));
+                        player.sendMessage(Component.text("提示: 每年只能庆祝一次生日，即使修改生日日期")
+                                .color(NamedTextColor.GRAY));
+                    } else {
+                        // 首次设置生日的特殊消息
+                        player.sendMessage(Component.text("🎂 恭喜！生日信息设置成功！")
+                                .color(NamedTextColor.GREEN).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+                        player.sendMessage(Component.text("你的生日是 " + month + "月" + day + "日")
+                                .color(NamedTextColor.GOLD));
+                        player.sendMessage(Component.text("生日当天登录服务器会有惊喜哦！🎈")
+                                .color(NamedTextColor.YELLOW));
+                        player.sendMessage(Component.text("提示: 你可以随时使用 /birthday set 修改生日")
+                                .color(NamedTextColor.GRAY));
+                        
+                        // 重置GUI提示状态，因为玩家已经设置了生日
+                        // 注意：这里不需要重置has_seen_gui，因为玩家已经有生日了，不会再触发提醒
+                    }
+                } else {
+                    // 管理员为其他玩家设置生日
+                    player.sendMessage(Component.text("生日信息设置成功！" + targetPlayer.getName() + "的生日是 " + month + "月" + day + "日")
+                            .color(NamedTextColor.GREEN));
+                }
             } else {
                 player.sendMessage(Component.text("目标玩家必须在线！").color(NamedTextColor.RED));
                 return;

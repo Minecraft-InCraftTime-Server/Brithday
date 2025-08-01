@@ -57,4 +57,36 @@ public class PlayerDataManager {
         playerData.set("last_celebrated", date);
         savePlayerData(uuid, playerData);
     }
+
+    // 获取玩家上次庆祝的年份
+    public String getLastCelebratedYear(String uuid) {
+        YamlConfiguration playerData = getPlayerData(uuid);
+        return playerData.getString("last_celebrated_year");
+    }
+
+    // 设置玩家上次庆祝的年份
+    public void setLastCelebratedYear(String uuid, String year) {
+        YamlConfiguration playerData = getPlayerData(uuid);
+        playerData.set("last_celebrated_year", year);
+        savePlayerData(uuid, playerData);
+    }
+
+    // 检查玩家当年是否已经庆祝过生日
+    public boolean hasCelebratedThisYear(String uuid, String currentYear) {
+        String lastCelebratedYear = getLastCelebratedYear(uuid);
+        return currentYear.equals(lastCelebratedYear);
+    }
+
+    // 获取玩家是否已经看过生日设置GUI提示
+    public boolean hasSeenBirthdayGUI(String uuid) {
+        YamlConfiguration playerData = getPlayerData(uuid);
+        return playerData.getBoolean("has_seen_gui", false);
+    }
+
+    // 设置玩家已经看过生日设置GUI提示
+    public void setHasSeenBirthdayGUI(String uuid, boolean hasSeen) {
+        YamlConfiguration playerData = getPlayerData(uuid);
+        playerData.set("has_seen_gui", hasSeen);
+        savePlayerData(uuid, playerData);
+    }
 }

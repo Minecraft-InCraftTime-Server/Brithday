@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -46,13 +45,7 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
 
         switch (args[0].toLowerCase()) {
             case "set" -> {
-                String uuid = player.getUniqueId().toString();
-                if (plugin.getPlayerDataManager().getBirthday(uuid) != null && !player.hasPermission("birthday.modify")) {
-                    player.sendMessage(Component.text("你已经设置过生日了！如需修改请联系管理员。")
-                            .color(NamedTextColor.RED));
-                    player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
-                    return true;
-                }
+                // 移除生日已设置的限制，允许玩家随时修改
                 gui.openBirthdayGUI(player);
                 return true;
             }
@@ -175,10 +168,10 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
 
     private void showHelpMessage(Player player) {
         player.sendMessage(Component.text("=== 生日系统帮助 ===").color(NamedTextColor.GOLD));
-        player.sendMessage(Component.text("/birthday set - 设置生日").color(NamedTextColor.YELLOW));
+        player.sendMessage(Component.text("/birthday set - 设置或修改生日").color(NamedTextColor.YELLOW));
         player.sendMessage(Component.text("/birthday check - 查看生日信息").color(NamedTextColor.YELLOW));
         if (player.hasPermission("birthday.modify")) {
-            player.sendMessage(Component.text("/birthday modify - 修改生日信息").color(NamedTextColor.YELLOW));
+            player.sendMessage(Component.text("/birthday modify - 修改其他玩家生日信息").color(NamedTextColor.YELLOW));
         }
         if (player.hasPermission("birthday.admin")) {
             player.sendMessage(Component.text("/birthday reload - 重载配置").color(NamedTextColor.YELLOW));
@@ -194,6 +187,8 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
                 String[] parts = birthdayString.split("-");
                 player.sendMessage(Component.text("你的生日是: " + parts[0] + "月" + parts[1] + "日")
                         .color(NamedTextColor.GREEN));
+                player.sendMessage(Component.text("提示: 你可以随时使用 /birthday set 修改生日，但每年只能庆祝一次")
+                        .color(NamedTextColor.GRAY));
             } else {
                 player.sendMessage(Component.text("你还没有设置生日信息！")
                         .color(NamedTextColor.YELLOW));

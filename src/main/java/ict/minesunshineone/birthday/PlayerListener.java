@@ -38,33 +38,64 @@ public class PlayerListener implements Listener {
 
         plugin.getServer().getRegionScheduler().runDelayed(plugin, player.getLocation(), (task) -> {
             if (plugin.getPlayerDataManager().getBirthday(uuid) == null) {
-                birthdayGUI.openBirthdayGUI(player);
-                // 发送提示消息
-                player.sendMessage(Component.empty());
-                player.sendMessage(Component.text("━━━━━━━━━━ 生日系统 ━━━━━━━━━━")
-                        .color(NamedTextColor.GOLD));
-                player.sendMessage(Component.text("你还没有设置生日信息！")
-                        .color(NamedTextColor.YELLOW));
-                player.sendMessage(Component.text("使用 /birthday set 命令设置你的生日")
-                        .color(NamedTextColor.YELLOW));
-                player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━")
-                        .color(NamedTextColor.GOLD));
-                player.sendMessage(Component.empty());
-
-                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                // 检查玩家是否已经看过GUI提示
+                boolean hasSeenGUI = plugin.getPlayerDataManager().hasSeenBirthdayGUI(uuid);
+                
+                if (!hasSeenGUI) {
+                    // 第一次进服务器 - 弹出GUI + 明显提示
+                    birthdayGUI.openBirthdayGUI(player);
+                    
+                    // 发送醒目的欢迎消息
+                    player.sendMessage(Component.empty());
+                    player.sendMessage(Component.text("🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉")
+                            .color(NamedTextColor.GOLD));
+                    player.sendMessage(Component.text("          ✨ 欢迎来到服务器！✨")
+                            .color(NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+                    player.sendMessage(Component.text("🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉")
+                            .color(NamedTextColor.GOLD));
+                    player.sendMessage(Component.empty());
+                    
+                    player.sendMessage(Component.text("━━━━━━━━━━ 生日系统 ━━━━━━━━━━")
+                            .color(NamedTextColor.GOLD));
+                    player.sendMessage(Component.text("🎈 请设置你的生日信息！🎈")
+                            .color(NamedTextColor.YELLOW).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
+                    player.sendMessage(Component.text("生日当天会有特殊的庆祝活动哦！")
+                            .color(NamedTextColor.GREEN));
+                    player.sendMessage(Component.text("请在弹出的界面中选择你的生日月份和日期")
+                            .color(NamedTextColor.YELLOW));
+                    player.sendMessage(Component.text("━━━━━━━━━━━━━━━━━━━━━━")
+                            .color(NamedTextColor.GOLD));
+                    player.sendMessage(Component.empty());
+                    
+                    // 播放提示音效
+                    player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                    
+                    // 标记玩家已经看过GUI
+                    plugin.getPlayerDataManager().setHasSeenBirthdayGUI(uuid, true);
+                } else {
+                    // 第二次及以后 - 只显示左下角提示
+                    sendBirthdayReminder(player);
+                }
             } else {
                 Calendar today = Calendar.getInstance();
                 int currentMonth = today.get(Calendar.MONTH) + 1;
                 int currentDay = today.get(Calendar.DAY_OF_MONTH);
+                int currentYear = today.get(Calendar.YEAR);
                 String todayString = currentMonth + "-" + currentDay;
+                String currentYearString = String.valueOf(currentYear);
 
                 YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(uuid);
                 String birthdayString = playerData.getString("birthday");
-                String lastCelebrated = playerData.getString("last_celebrated");
 
-                if (birthdayString != null && birthdayString.equals(todayString) && !todayString.equals(lastCelebrated)) {
-                    plugin.celebrateBirthday(player);
-                    plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
+                if (birthdayString != null && birthdayString.equals(todayString)) {
+                    // 检查玩家当年是否已经庆祝过生日
+                    if (!plugin.getPlayerDataManager().hasCelebratedThisYear(uuid, currentYearString)) {
+                        plugin.celebrateBirthday(player);
+                        // 记录庆祝年份而不是具体日期
+                        plugin.getPlayerDataManager().setLastCelebratedYear(uuid, currentYearString);
+                        // 保留原有的last_celebrated字段以兼容其他功能
+                        plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
+                    }
                 }
             }
         }, 20L);
@@ -80,20 +111,6 @@ public class PlayerListener implements Listener {
             event.setCancelled(true);
             player.closeInventory();
             player.sendMessage(Component.text("你没有权限修改其他玩家的生日！").color(NamedTextColor.RED));
-            return;
-        }
-
-        String uuid = player.getUniqueId().toString();
-
-        // 检查玩家是否已经设置过生日且没有修改权限
-        if ((title.equals("请选择你的生日月份") || title.equals("请选择日期"))
-                && plugin.getPlayerDataManager().getBirthday(uuid) != null
-                && !player.hasPermission("birthday.modify")) {
-            event.setCancelled(true);
-            player.closeInventory();
-            player.sendMessage(Component.text("你已经设置过生日了！如需修改请联系管理员。")
-                    .color(NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             return;
         }
 
@@ -207,5 +224,19 @@ public class PlayerListener implements Listener {
             sender.sendMessage(Component.text(message != null ? message : "你今天已经送过生日祝福了！")
                     .color(NamedTextColor.YELLOW));
         }
+    }
+
+    // 发送生日提醒消息（左下角提示）
+    private void sendBirthdayReminder(Player player) {
+        // 使用ActionBar发送底部提示
+        player.sendActionBar(Component.text("💡 提示：你还没有设置生日！使用 /birthday set 进行设置")
+                .color(NamedTextColor.GOLD));
+        
+        // 同时发送聊天提示，但比较简洁
+        player.sendMessage(Component.text("🎂 你还没有设置生日信息，使用 /birthday set 命令设置吧！")
+                .color(NamedTextColor.YELLOW));
+        
+        // 轻微的提示音
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 0.5f, 1.0f);
     }
 }

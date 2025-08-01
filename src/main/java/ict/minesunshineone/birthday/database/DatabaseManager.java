@@ -72,7 +72,7 @@ public class DatabaseManager {
         String createPlayerDataTable = String.format("""
             CREATE TABLE IF NOT EXISTS %splayer_data (
                 uuid VARCHAR(36) PRIMARY KEY,
-                name VARCHAR(16) NOT NULL,
+                name VARCHAR(16) NOT NULL DEFAULT 'Unknown',
                 birthday VARCHAR(10),
                 last_celebrated VARCHAR(10),
                 last_celebrated_year VARCHAR(4),
@@ -104,6 +104,10 @@ public class DatabaseManager {
                 stmt.execute();
                 plugin.getLogger().info("祝福数据表创建/检查完成");
             }
+            
+            // 检查并修复现有数据库表结构
+            fixTableStructure(connection);
+            
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, "创建数据表失败: " + e.getMessage(), e);
         }
@@ -111,5 +115,44 @@ public class DatabaseManager {
 
     public String getTablePrefix() {
         return config.getTablePrefix();
+    }
+    
+    // 修复现有数据库表结构
+    private void fixTableStructure(Connection connection) {
+        try {
+            // 检查 name 字段是否有默认值
+            String checkSql = String.format("""
+                SELECT COLUMN_DEFAULT, IS_NULLABLE 
+                FROM INFORMATION_SCHEMA.COLUMNS 
+                WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'name'
+                """);
+            
+            try (PreparedStatement stmt = connection.prepareStatement(checkSql)) {
+                stmt.setString(1, config.getDatabase());
+                stmt.setString(2, config.getTablePrefix() + "player_data");
+                
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        String defaultValue = rs.getString("COLUMN_DEFAULT");
+                        String isNullable = rs.getString("IS_NULLABLE");
+                        
+                        // 如果 name 字段没有默认值且不能为空，需要修复
+                        if (defaultValue == null && "NO".equals(isNullable)) {
+                            String alterSql = String.format("""
+                                ALTER TABLE %splayer_data 
+                                MODIFY COLUMN name VARCHAR(16) NOT NULL DEFAULT 'Unknown'
+                                """, config.getTablePrefix());
+                            
+                            try (PreparedStatement alterStmt = connection.prepareStatement(alterSql)) {
+                                alterStmt.execute();
+                                plugin.getLogger().info("已修复 name 字段，添加默认值 'Unknown'");
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.WARNING, "检查/修复表结构时出现错误: " + e.getMessage(), e);
+        }
     }
 }

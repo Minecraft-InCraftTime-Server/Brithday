@@ -71,9 +71,20 @@ public class DatabasePlayerDataManager {
 
     // 设置上次庆祝的日期（保留兼容性）
     public void setLastCelebrated(String uuid, String date) {
+        // 获取玩家名称，确保name字段有值
+        String playerName = getPlayerNameByUUID(uuid);
+        if (playerName == null || playerName.trim().isEmpty()) {
+            // 尝试从在线玩家获取名称
+            playerName = getOnlinePlayerName(uuid);
+            if (playerName == null || playerName.trim().isEmpty()) {
+                // 最后的后备方案：使用UUID前8位，确保不为空
+                playerName = "Player_" + uuid.substring(0, 8);
+            }
+        }
+        
         String sql = String.format("""
-            INSERT INTO %splayer_data (uuid, last_celebrated, updated_at) 
-            VALUES (?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO %splayer_data (uuid, name, last_celebrated, updated_at) 
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE 
             last_celebrated = VALUES(last_celebrated), 
             updated_at = CURRENT_TIMESTAMP
@@ -83,7 +94,8 @@ public class DatabasePlayerDataManager {
              PreparedStatement stmt = connection.prepareStatement(sql)) {
             
             stmt.setString(1, uuid);
-            stmt.setString(2, date);
+            stmt.setString(2, playerName);
+            stmt.setString(3, date);
             stmt.executeUpdate();
             
         } catch (SQLException e) {
@@ -114,9 +126,20 @@ public class DatabasePlayerDataManager {
 
     // 设置上次庆祝的年份
     public void setLastCelebratedYear(String uuid, String year) {
+        // 获取玩家名称，确保name字段有值
+        String playerName = getPlayerNameByUUID(uuid);
+        if (playerName == null || playerName.trim().isEmpty()) {
+            // 尝试从在线玩家获取名称
+            playerName = getOnlinePlayerName(uuid);
+            if (playerName == null || playerName.trim().isEmpty()) {
+                // 最后的后备方案：使用UUID前8位，确保不为空
+                playerName = "Player_" + uuid.substring(0, 8);
+            }
+        }
+        
         String sql = String.format("""
-            INSERT INTO %splayer_data (uuid, last_celebrated_year, updated_at) 
-            VALUES (?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO %splayer_data (uuid, name, last_celebrated_year, updated_at) 
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE 
             last_celebrated_year = VALUES(last_celebrated_year), 
             updated_at = CURRENT_TIMESTAMP
@@ -126,7 +149,8 @@ public class DatabasePlayerDataManager {
              PreparedStatement stmt = connection.prepareStatement(sql)) {
             
             stmt.setString(1, uuid);
-            stmt.setString(2, year);
+            stmt.setString(2, playerName);
+            stmt.setString(3, year);
             stmt.executeUpdate();
             
         } catch (SQLException e) {
@@ -161,12 +185,21 @@ public class DatabasePlayerDataManager {
         return false;
     }
 
-    // 设置玩家已经看过生日设置GUI提示
-    public void setHasSeenBirthdayGUI(String uuid, boolean hasSeen) {
+    // 设置玩家已经看过生日设置GUI提示（使用Player对象确保有名称）
+    public void setHasSeenBirthdayGUI(Player player, boolean hasSeen) {
+        String uuid = player.getUniqueId().toString();
+        String playerName = player.getName();
+        
+        // 额外保护：确保玩家名称不为空
+        if (playerName == null || playerName.trim().isEmpty()) {
+            playerName = "Player_" + uuid.substring(0, 8);
+        }
+        
         String sql = String.format("""
-            INSERT INTO %splayer_data (uuid, has_seen_gui, updated_at) 
-            VALUES (?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO %splayer_data (uuid, name, has_seen_gui, updated_at) 
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE 
+            name = VALUES(name),
             has_seen_gui = VALUES(has_seen_gui), 
             updated_at = CURRENT_TIMESTAMP
             """, databaseManager.getTablePrefix());
@@ -175,7 +208,43 @@ public class DatabasePlayerDataManager {
              PreparedStatement stmt = connection.prepareStatement(sql)) {
             
             stmt.setString(1, uuid);
-            stmt.setBoolean(2, hasSeen);
+            stmt.setString(2, playerName);
+            stmt.setBoolean(3, hasSeen);
+            stmt.executeUpdate();
+            
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, String.format("设置玩家 %s GUI提示状态失败: %s", playerName, e.getMessage()), e);
+        }
+    }
+
+    // 设置玩家已经看过生日设置GUI提示
+    public void setHasSeenBirthdayGUI(String uuid, boolean hasSeen) {
+        // 获取玩家名称，确保name字段有值
+        String playerName = getPlayerNameByUUID(uuid);
+        if (playerName == null || playerName.trim().isEmpty()) {
+            // 尝试从在线玩家获取名称
+            playerName = getOnlinePlayerName(uuid);
+            if (playerName == null || playerName.trim().isEmpty()) {
+                // 最后的后备方案：使用UUID前8位，确保不为空
+                playerName = "Player_" + uuid.substring(0, 8);
+            }
+        }
+        
+        String sql = String.format("""
+            INSERT INTO %splayer_data (uuid, name, has_seen_gui, updated_at) 
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            ON DUPLICATE KEY UPDATE 
+            name = VALUES(name),
+            has_seen_gui = VALUES(has_seen_gui), 
+            updated_at = CURRENT_TIMESTAMP
+            """, databaseManager.getTablePrefix());
+
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            
+            stmt.setString(1, uuid);
+            stmt.setString(2, playerName);
+            stmt.setBoolean(3, hasSeen);
             stmt.executeUpdate();
             
         } catch (SQLException e) {
@@ -288,6 +357,37 @@ public class DatabasePlayerDataManager {
             
         } catch (SQLException e) {
             plugin.getLogger().log(Level.SEVERE, String.format("更新玩家 %s 名称失败: %s", newName, e.getMessage()), e);
+        }
+    }
+
+    // 通过UUID获取玩家名称的辅助方法
+    private String getPlayerNameByUUID(String uuid) {
+        String sql = String.format("SELECT name FROM %splayer_data WHERE uuid = ?", databaseManager.getTablePrefix());
+        
+        try (Connection connection = databaseManager.getConnection();
+             PreparedStatement stmt = connection.prepareStatement(sql)) {
+            
+            stmt.setString(1, uuid);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("name");
+                }
+            }
+            
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, String.format("通过UUID %s 获取玩家名称失败: %s", uuid, e.getMessage()), e);
+        }
+        
+        return null;
+    }
+
+    // 尝试从在线玩家获取名称
+    private String getOnlinePlayerName(String uuid) {
+        try {
+            org.bukkit.entity.Player player = plugin.getServer().getPlayer(java.util.UUID.fromString(uuid));
+            return player != null ? player.getName() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 }

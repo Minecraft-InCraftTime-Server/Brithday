@@ -1,6 +1,5 @@
 package ict.minesunshineone.birthday;
 
-import java.io.File;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -11,7 +10,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 
 import net.kyori.adventure.text.Component;
@@ -77,33 +75,23 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
                         if (targetPlayer != null) {
                             targetUUID = targetPlayer.getUniqueId().toString();
                         } else {
-                            // 检查离线玩家数据
-                            File playerDataFolder = new File(plugin.getDataFolder(), "player_data");
-                            File[] files = playerDataFolder.listFiles();
-                            if (files != null) {
-                                targetUUID = null;
-                                for (File file : files) {
-                                    YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
-                                    if (targetName.equals(data.getString("name"))) {
-                                        targetUUID = file.getName().replace(".yml", "");
-                                        break;
-                                    }
-                                }
-                                if (targetUUID == null) {
-                                    player.sendMessage(Component.text("找不到玩家: " + targetName).color(NamedTextColor.RED));
-                                    return true;
-                                }
-                            } else {
-                                player.sendMessage(Component.text("无法读取玩家数据！").color(NamedTextColor.RED));
+                            // 检查数据管理器中的玩家
+                            targetUUID = plugin.getDataManager().getUUIDByName(targetName);
+                            if (targetUUID == null) {
+                                player.sendMessage(Component.text("找不到玩家: " + targetName).color(NamedTextColor.RED));
                                 return true;
                             }
                         }
 
-                        // 保存生日信息
-                        YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(targetUUID);
-                        playerData.set("name", targetName);
-                        playerData.set("birthday", month + "-" + day);
-                        plugin.getPlayerDataManager().savePlayerData(targetUUID, playerData);
+                        // 使用统一的数据管理器保存生日信息
+                        if (targetPlayer != null) {
+                            plugin.getDataManager().saveBirthday(targetPlayer, month, day);
+                        } else {
+                            // 对于离线玩家，我们需要特殊处理
+                            // 这里暂时跳过，因为DataManager接口需要Player对象
+                            player.sendMessage(Component.text("目标玩家必须在线才能修改生日！").color(NamedTextColor.RED));
+                            return true;
+                        }
 
                         player.sendMessage(Component.text("已将 " + targetName + " 的生日设置为 " + month + "月" + day + "日")
                                 .color(NamedTextColor.GREEN));
@@ -125,6 +113,19 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
                 }
                 return true;
             }
+            case "migrate" -> {
+                if (player.hasPermission("birthday.admin")) {
+                    if (plugin.isUsingDatabase()) {
+                        // TODO: 实现从文件到数据库的迁移
+                        player.sendMessage(Component.text("数据迁移功能将在后续版本实现").color(NamedTextColor.YELLOW));
+                    } else {
+                        player.sendMessage(Component.text("当前使用文件存储模式，无需迁移").color(NamedTextColor.YELLOW));
+                    }
+                } else {
+                    player.sendMessage(Component.text("你没有权限执行数据迁移！").color(NamedTextColor.RED));
+                }
+                return true;
+            }
             default -> {
                 showHelpMessage(player);
                 return true;
@@ -140,7 +141,7 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
 
         return switch (args.length) {
             case 1 ->
-                List.of("set", "check", "modify", "reload").stream()
+                List.of("set", "check", "modify", "reload", "migrate").stream()
                 .filter(s -> s.startsWith(args[0].toLowerCase()))
                 .collect(Collectors.toList());
             case 2 ->
@@ -175,13 +176,16 @@ public class BirthdayCommand implements CommandExecutor, TabCompleter {
         }
         if (player.hasPermission("birthday.admin")) {
             player.sendMessage(Component.text("/birthday reload - 重载配置").color(NamedTextColor.YELLOW));
+            if (plugin.isUsingDatabase()) {
+                player.sendMessage(Component.text("/birthday migrate - 数据迁移").color(NamedTextColor.YELLOW));
+            }
         }
     }
 
     private void showBirthdayInfo(Player player) {
         try {
             String uuid = player.getUniqueId().toString();
-            String birthdayString = plugin.getPlayerDataManager().getBirthday(uuid);
+            String birthdayString = plugin.getDataManager().getBirthday(uuid);
 
             if (birthdayString != null) {
                 String[] parts = birthdayString.split("-");

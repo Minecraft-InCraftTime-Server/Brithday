@@ -1,5 +1,6 @@
 package ict.minesunshineone.birthday;
 
+import java.io.File;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,6 +18,11 @@ import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import ict.minesunshineone.birthday.data.DataManager;
+import ict.minesunshineone.birthday.data.DatabaseDataManager;
+import ict.minesunshineone.birthday.data.FileDataManager;
+import ict.minesunshineone.birthday.database.DatabaseConfig;
+import ict.minesunshineone.birthday.database.DatabaseManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -28,7 +34,10 @@ import net.luckperms.api.node.Node;
 public class BirthdayPlugin extends JavaPlugin {
 
     private FileConfiguration config;
-    private PlayerDataManager playerDataManager;
+    private PlayerDataManager playerDataManager; // 保留向后兼容
+    private DataManager dataManager; // 新的统一数据管理器
+    private DatabaseManager databaseManager;
+    private boolean usingDatabase = false;
 
     @Override
     public void onEnable() {
@@ -36,8 +45,8 @@ public class BirthdayPlugin extends JavaPlugin {
         saveDefaultConfig();
         config = getConfig();
 
-        // 初始化 PlayerDataManager
-        playerDataManager = new PlayerDataManager(this);
+        // 初始化数据管理器
+        initializeDataManager();
 
         // 注册事件监听器
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
@@ -45,25 +54,94 @@ public class BirthdayPlugin extends JavaPlugin {
         // 注册命令
         var birthdayCommand = getCommand("birthday");
         if (birthdayCommand != null) {
-            birthdayCommand.setExecutor(new BirthdayCommand(this));
+            BirthdayCommand commandExecutor = new BirthdayCommand(this);
+            birthdayCommand.setExecutor(commandExecutor);
+            birthdayCommand.setTabCompleter(commandExecutor);
         } else {
             getLogger().severe("无法注册 birthday 命令!");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
         }
 
-        getLogger().info("Birthday Plugin has been enabled!");
-
-        // 注册 PAPI 扩展
-        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+        // 注册PlaceholderAPI扩展
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new BirthdayPlaceholder(this).register();
             getLogger().info("PlaceholderAPI 扩展注册成功!");
         }
     }
 
+    private void initializeDataManager() {
+        String storageType = config.getString("storage.type", "FILE").toUpperCase();
+        
+        if ("DATABASE".equals(storageType)) {
+            try {
+                // 初始化数据库
+                DatabaseConfig dbConfig = new DatabaseConfig(config);
+                databaseManager = new DatabaseManager(this, dbConfig);
+                
+                if (databaseManager.connect()) {
+                    dataManager = new DatabaseDataManager(this, databaseManager);
+                    usingDatabase = true;
+                    getLogger().info("已启用数据库存储模式");
+                    
+                    // 如果有文件数据，提示迁移
+                    checkForDataMigration();
+                } else {
+                    getLogger().warning("数据库连接失败，回退到文件存储模式");
+                    initializeFileStorage();
+                }
+            } catch (Exception e) {
+                getLogger().severe("初始化数据库失败: " + e.getMessage());
+                getLogger().warning("回退到文件存储模式");
+                initializeFileStorage();
+            }
+        } else {
+            initializeFileStorage();
+        }
+    }
+
+    private void initializeFileStorage() {
+        // 保持向后兼容
+        playerDataManager = new PlayerDataManager(this);
+        dataManager = new FileDataManager(this);
+        usingDatabase = false;
+        getLogger().info("已启用文件存储模式");
+    }
+
+    private void checkForDataMigration() {
+        // 检查是否存在文件数据需要迁移
+        File playerDataFolder = new File(getDataFolder(), "player_data");
+        if (playerDataFolder.exists() && playerDataFolder.listFiles() != null) {
+            File[] files = playerDataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
+            if (files != null && files.length > 0) {
+                getLogger().info("检测到文件数据，如需迁移到数据库请使用 /birthday migrate 命令");
+            }
+        }
+    }
+
     @Override
     public void onDisable() {
+        if (databaseManager != null) {
+            databaseManager.disconnect();
+        }
         getLogger().info("Birthday Plugin has been disabled!");
+    }
+
+    // 获取数据管理器（新的统一接口）
+    public DataManager getDataManager() {
+        return dataManager;
+    }
+
+    // 保持向后兼容的方法
+    public PlayerDataManager getPlayerDataManager() {
+        if (usingDatabase && playerDataManager == null) {
+            // 如果使用数据库，返回null并提示使用新接口
+            getLogger().warning("使用数据库模式时，请使用 getDataManager() 方法替代 getPlayerDataManager()");
+            return null;
+        }
+        return playerDataManager;
+    }
+
+    public boolean isUsingDatabase() {
+        return usingDatabase;
     }
 
     public void celebrateBirthday(Player player) {
@@ -163,10 +241,6 @@ public class BirthdayPlugin extends JavaPlugin {
         } catch (Exception e) {
             getLogger().severe(String.format("重载配置时发生错误: %s", e.getMessage()));
         }
-    }
-
-    public PlayerDataManager getPlayerDataManager() {
-        return playerDataManager;
     }
 
     private void setBirthdayPrefix(Player player) {

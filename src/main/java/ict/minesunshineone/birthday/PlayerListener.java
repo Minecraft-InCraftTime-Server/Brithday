@@ -1,13 +1,10 @@
 package ict.minesunshineone.birthday;
 
-import java.io.File;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -37,9 +34,9 @@ public class PlayerListener implements Listener {
         String uuid = player.getUniqueId().toString();
 
         plugin.getServer().getRegionScheduler().runDelayed(plugin, player.getLocation(), (task) -> {
-            if (plugin.getPlayerDataManager().getBirthday(uuid) == null) {
+            if (plugin.getDataManager().getBirthday(uuid) == null) {
                 // 检查玩家是否已经看过GUI提示
-                boolean hasSeenGUI = plugin.getPlayerDataManager().hasSeenBirthdayGUI(uuid);
+                boolean hasSeenGUI = plugin.getDataManager().hasSeenBirthdayGUI(uuid);
                 
                 if (!hasSeenGUI) {
                     // 第一次进服务器 - 弹出GUI + 明显提示
@@ -71,7 +68,7 @@ public class PlayerListener implements Listener {
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
                     
                     // 标记玩家已经看过GUI
-                    plugin.getPlayerDataManager().setHasSeenBirthdayGUI(uuid, true);
+                    plugin.getDataManager().setHasSeenBirthdayGUI(uuid, true);
                 } else {
                     // 第二次及以后 - 只显示左下角提示
                     sendBirthdayReminder(player);
@@ -84,17 +81,16 @@ public class PlayerListener implements Listener {
                 String todayString = currentMonth + "-" + currentDay;
                 String currentYearString = String.valueOf(currentYear);
 
-                YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(uuid);
-                String birthdayString = playerData.getString("birthday");
+                String birthdayString = plugin.getDataManager().getBirthday(uuid);
 
                 if (birthdayString != null && birthdayString.equals(todayString)) {
                     // 检查玩家当年是否已经庆祝过生日
-                    if (!plugin.getPlayerDataManager().hasCelebratedThisYear(uuid, currentYearString)) {
+                    if (!plugin.getDataManager().hasCelebratedThisYear(uuid, currentYearString)) {
                         plugin.celebrateBirthday(player);
                         // 记录庆祝年份而不是具体日期
-                        plugin.getPlayerDataManager().setLastCelebratedYear(uuid, currentYearString);
+                        plugin.getDataManager().setLastCelebratedYear(uuid, currentYearString);
                         // 保留原有的last_celebrated字段以兼容其他功能
-                        plugin.getPlayerDataManager().setLastCelebrated(uuid, todayString);
+                        plugin.getDataManager().setLastCelebrated(uuid, todayString);
                     }
                 }
             }
@@ -168,25 +164,7 @@ public class PlayerListener implements Listener {
         int currentDay = today.get(Calendar.DAY_OF_MONTH);
         String todayString = currentMonth + "-" + currentDay;
 
-        File playerDataFolder = new File(plugin.getDataFolder(), "player_data");
-        File[] playerFiles = playerDataFolder.listFiles((dir, name) -> name.endsWith(".yml"));
-
-        List<String> birthdayPlayers = new ArrayList<>();
-
-        if (playerFiles != null) {
-            for (File file : playerFiles) {
-                String uuid = file.getName().replace(".yml", "");
-                YamlConfiguration playerData = plugin.getPlayerDataManager().getPlayerData(uuid);
-                String birthdayString = playerData.getString("birthday");
-
-                if (birthdayString != null && birthdayString.equals(todayString)) {
-                    String playerName = playerData.getString("name");
-                    if (playerName != null) {
-                        birthdayPlayers.add(playerName);
-                    }
-                }
-            }
-        }
+        List<String> birthdayPlayers = plugin.getDataManager().getTodayBirthdayPlayers(todayString);
 
         if (!birthdayPlayers.isEmpty()) {
             handleBirthdayWish(sender, birthdayPlayers, todayString);
@@ -198,11 +176,8 @@ public class PlayerListener implements Listener {
 
     private void handleBirthdayWish(Player sender, List<String> birthdayPlayers, String todayString) {
         String uuid = sender.getUniqueId().toString();
-        YamlConfiguration wishData = plugin.getPlayerDataManager().getPlayerData(uuid);
-        String wishKey = "wishes." + todayString;
-        List<String> todayWishes = wishData.getStringList(wishKey);
 
-        if (!todayWishes.contains(uuid)) {
+        if (!plugin.getDataManager().hasWishedToday(uuid, todayString)) {
             plugin.getServer().getRegionScheduler().execute(plugin, sender.getLocation(), () -> {
                 ItemStack cake = new ItemStack(Material.CAKE, 1);
                 sender.getInventory().addItem(cake);
@@ -216,9 +191,7 @@ public class PlayerListener implements Listener {
                         .color(NamedTextColor.GREEN));
             });
 
-            todayWishes.add(uuid);
-            wishData.set(wishKey, todayWishes);
-            plugin.getPlayerDataManager().savePlayerData(uuid, wishData);
+            plugin.getDataManager().recordWish(uuid, todayString);
         } else {
             String message = plugin.getConfig().getString("messages.wish-already", "你今天已经送过生日祝福了！");
             sender.sendMessage(Component.text(message != null ? message : "你今天已经送过生日祝福了！")

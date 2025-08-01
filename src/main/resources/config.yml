@@ -1,5 +1,25 @@
 # Birthday Plugin Configuration
 
+# 数据存储配置
+# 支持两种模式：
+# FILE - 使用本地YAML文件存储（默认，单服模式）
+# DATABASE - 使用MySQL数据库存储（推荐，支持跨服）
+storage:
+  type: FILE
+  
+# 数据库配置 (当 storage.type 为 DATABASE 时使用)
+# 多个服务器可以连接到同一个数据库实现数据共享
+database:
+  host: "localhost"          # 数据库主机地址
+  port: 3306                 # 数据库端口
+  database: "minecraft"      # 数据库名称
+  username: "root"           # 数据库用户名
+  password: ""               # 数据库密码
+  useSSL: false             # 是否使用SSL连接
+  table-prefix: "birthday_"  # 表前缀，多个插件实例可使用不同前缀
+  max-connections: 10        # 连接池最大连接数
+  connection-timeout: 5000   # 连接超时时间(毫秒)
+
 # 消息配置
 messages:
   prefix: "&b&l『ICT』>> &r"

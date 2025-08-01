@@ -203,9 +203,9 @@ public class BirthdayGUI {
             // 使用目标玩家的UUID保存生日信息
             if (targetPlayer != null) {
                 String uuid = targetPlayer.getUniqueId().toString();
-                String existingBirthday = plugin.getPlayerDataManager().getBirthday(uuid);
+                String existingBirthday = plugin.getDataManager().getBirthday(uuid);
                 
-                plugin.getPlayerDataManager().saveBirthday(targetPlayer, month, day);
+                plugin.getDataManager().saveBirthday(targetPlayer, month, day);
                 
                 if (player.getUniqueId().equals(targetUUID)) {
                     // 玩家为自己设置生日

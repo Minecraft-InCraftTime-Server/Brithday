@@ -42,16 +42,6 @@ public class PlayerListener implements Listener {
                     // 第一次进服务器 - 弹出GUI + 明显提示
                     birthdayGUI.openBirthdayGUI(player);
                     
-                    // 发送醒目的欢迎消息
-                    player.sendMessage(Component.empty());
-                    player.sendMessage(Component.text("🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉")
-                            .color(NamedTextColor.GOLD));
-                    player.sendMessage(Component.text("          ✨ 欢迎来到服务器！✨")
-                            .color(NamedTextColor.AQUA).decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
-                    player.sendMessage(Component.text("🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉🎂🎉")
-                            .color(NamedTextColor.GOLD));
-                    player.sendMessage(Component.empty());
-                    
                     player.sendMessage(Component.text("━━━━━━━━━━ 生日系统 ━━━━━━━━━━")
                             .color(NamedTextColor.GOLD));
                     player.sendMessage(Component.text("🎈 请设置你的生日信息！🎈")

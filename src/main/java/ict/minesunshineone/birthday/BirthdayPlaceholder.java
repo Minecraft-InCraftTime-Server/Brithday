@@ -37,7 +37,7 @@ public class BirthdayPlaceholder extends PlaceholderExpansion {
         }
 
         if (identifier.equals("date")) {
-            String birthday = plugin.getPlayerDataManager().getBirthday(player.getUniqueId().toString());
+            String birthday = plugin.getDataManager().getBirthday(player.getUniqueId().toString());
             if (birthday != null) {
                 String[] parts = birthday.split("-");
                 return parts[0] + "月" + parts[1] + "日";
